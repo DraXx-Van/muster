@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -23,6 +23,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-covered: var(--covered);
+  --color-partial: var(--partial);
+  --color-gap: var(--gap);
+  --color-info: var(--info);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -49,72 +53,81 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0.002 270);
+  --foreground: oklch(0.18 0.02 270);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.18 0.02 270);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.18 0.02 270);
+  --primary: oklch(0.55 0.23 277);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --secondary: oklch(0.96 0.005 270);
+  --secondary-foreground: oklch(0.25 0.02 270);
+  --muted: oklch(0.96 0.005 270);
+  --muted-foreground: oklch(0.5 0.02 270);
+  --accent: oklch(0.95 0.02 277);
+  --accent-foreground: oklch(0.3 0.1 277);
+  --destructive: oklch(0.6 0.22 25);
+  --border: oklch(0.9 0.005 270);
+  --input: oklch(0.9 0.005 270);
+  --ring: oklch(0.55 0.23 277);
+  --chart-1: oklch(0.62 0.22 277);
+  --chart-2: oklch(0.72 0.15 195);
+  --chart-3: oklch(0.72 0.17 152);
+  --chart-4: oklch(0.8 0.16 80);
+  --chart-5: oklch(0.65 0.22 25);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.97 0.004 270);
+  --sidebar-foreground: oklch(0.18 0.02 270);
+  --sidebar-primary: oklch(0.55 0.23 277);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.94 0.01 270);
+  --sidebar-accent-foreground: oklch(0.18 0.02 270);
+  --sidebar-border: oklch(0.9 0.005 270);
+  --sidebar-ring: oklch(0.55 0.23 277);
+  --covered: oklch(0.62 0.17 152);
+  --partial: oklch(0.72 0.16 75);
+  --gap: oklch(0.6 0.22 25);
+  --info: oklch(0.6 0.15 250);
 }
 
+/* Dark is the default theme (html has class "dark"): zinc surfaces, one indigo accent. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --background: oklch(0.14 0.006 270);
+  --foreground: oklch(0.97 0.004 270);
+  --card: oklch(0.185 0.008 270);
+  --card-foreground: oklch(0.97 0.004 270);
+  --popover: oklch(0.2 0.009 270);
+  --popover-foreground: oklch(0.97 0.004 270);
+  --primary: oklch(0.6 0.22 277);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.25 0.01 270);
+  --secondary-foreground: oklch(0.97 0.004 270);
+  --muted: oklch(0.23 0.01 270);
+  --muted-foreground: oklch(0.72 0.015 270);
+  --accent: oklch(0.27 0.03 277);
+  --accent-foreground: oklch(0.97 0.004 270);
+  --destructive: oklch(0.68 0.2 22);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.6 0.22 277);
+  --chart-1: oklch(0.66 0.21 277);
+  --chart-2: oklch(0.75 0.14 195);
+  --chart-3: oklch(0.74 0.17 152);
+  --chart-4: oklch(0.82 0.15 80);
+  --chart-5: oklch(0.68 0.21 25);
+  --sidebar: oklch(0.165 0.008 270);
+  --sidebar-foreground: oklch(0.97 0.004 270);
+  --sidebar-primary: oklch(0.6 0.22 277);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-accent: oklch(0.25 0.012 270);
+  --sidebar-accent-foreground: oklch(0.97 0.004 270);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.6 0.22 277);
+  --covered: oklch(0.74 0.17 152);
+  --partial: oklch(0.82 0.16 80);
+  --gap: oklch(0.68 0.22 25);
+  --info: oklch(0.72 0.14 250);
 }
 
 @layer base {
@@ -122,9 +135,34 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
   }
   html {
     @apply font-sans;
   }
+}
+
+@layer utilities {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .surface { @apply rounded-xl border bg-card/80 backdrop-blur-sm; }
+  .grid-dots {
+    background-image: radial-gradient(oklch(1 0 0 / 7%) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+}
+
+/* The one allowed infinite animation: a red zone/seat that still needs someone. */
+@keyframes gap-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes gap-ring {
+  0% { box-shadow: 0 0 0 0 oklch(0.68 0.22 25 / 0.55); }
+  100% { box-shadow: 0 0 0 10px oklch(0.68 0.22 25 / 0); }
+}
+.pulse-gap { animation: gap-pulse 1.6s ease-in-out infinite; }
+.pulse-ring { animation: gap-ring 1.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pulse-gap, .pulse-ring { animation: none; }
 }

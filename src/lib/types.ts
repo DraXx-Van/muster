@@ -126,6 +126,19 @@ export interface Notification {
   created_at: string;
 }
 
+/** Everything the UI needs for one event, fetched in one go (see getSnapshot in db/queries.ts). */
+export interface Snapshot {
+  event: EventRow;
+  zones: Zone[];
+  volunteers: Volunteer[]; // all roles; filter role === 'volunteer' for the engine
+  shifts: Shift[];
+  assignments: Assignment[];
+  tasks: Task[];
+  issues: Issue[];
+  announcements: Announcement[];
+  notifications: Notification[];
+}
+
 // ---------------------------------------------------------------------------
 // ENGINE CONTRACT (P1 implements in src/lib/engine, P2/P3/P4 consume).
 // Until the engine is ready, use mocks in src/lib/mock/ that return these shapes.
