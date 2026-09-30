@@ -143,6 +143,10 @@
   }
 }
 
+@layer components {
+  [data-slot="label"] { margin-bottom: 0.375rem; }
+}
+
 @layer utilities {
   .tabular { font-variant-numeric: tabular-nums; }
   .surface { @apply rounded-xl border bg-card/80 backdrop-blur-sm; }
