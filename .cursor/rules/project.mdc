@@ -1,0 +1,64 @@
+---
+description: CrewPulse project rules
+alwaysApply: true
+---
+# CrewPulse: rules for AI assistants
+
+(This same file is copied to AGENTS.md, .cursor/rules/project.mdc and .github/copilot-instructions.md so every tool reads it.)
+
+## What we are building
+An Event Volunteer & Crowd Coordination Platform. **Read PRD.md before any task.**
+The core challenge is the assignment engine in `src/lib/engine`. Hackathon: ship a polished, working demo in ~4.5 hours.
+Speed beats perfection, but the demo path (see PRD "Demo script") must never break.
+
+## Stack (fixed, do not change, do not add frameworks)
+- Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui
+- Supabase (Postgres + Realtime) via `@supabase/supabase-js`
+- Framer Motion (animation), Recharts (charts), lucide-react (icons), sonner (toasts)
+- SWR (data fetching), zod + react-hook-form (forms), date-fns (dates), @dnd-kit (drag and drop)
+- vitest for engine unit tests
+- NO Python, NO separate backend, NO ORM, NO Redux. Logic lives in Next.js route handlers and `src/lib/engine`.
+- Do not `npm install` anything new without asking the human. `package.json` is owned by P4.
+
+## Folder ownership (only edit what you own)
+| Owner | Area |
+|---|---|
+| P1 Engine | `src/lib/engine/**`, `src/app/(coord)/assignments/**`, `src/components/assignments/**`, `src/app/api/assign/**` (incl. `apply`), `api/rebalance`, `api/simulate` |
+| P2 Dashboard | `src/app/(coord)/dashboard/**`, `src/components/dashboard/**` |
+| P3 Ops | `src/app/(coord)/{setup,volunteers,tasks,issues,announcements}/**`, `src/components/ops/**`, `api/announce`, `api/escalate` |
+| P4 Foundation + Volunteer app | `supabase/**`, `src/lib/db/**`, `src/lib/clock.ts`, `src/lib/realtime.ts`, `src/app/api/clock`, `src/lib/seed/**`, `src/app/(auth)/**`, `src/app/(vol)/**`, `src/components/volunteer/**`, `app/layout.tsx`, deploy |
+| Each dev | `src/lib/mock/<your-area>*.ts`: your own mock files, prefix them with your area (e.g. `dashboardMock.ts`) |
+| SHARED (ask first) | `src/lib/types.ts`, `src/components/ui/**`, `package.json`, `tailwind.config.*`, `globals.css` |
+
+## Rules
+1. Only edit files you own. If you need a change elsewhere, tell that person, or make the smallest additive change and announce it in the team chat.
+2. All data types come from `src/lib/types.ts`. Schema changes go through P4 (`supabase/schema.sql`) and are announced.
+3. Data access only through functions in `src/lib/db/queries.ts`. No raw SQL in components. Until P4 ships them, use `src/lib/mock/*`.
+4. Engine functions are **pure**: no DB calls, no fetch, no `Date.now()`. They take `now` as a parameter. Every engine function has a vitest test.
+5. "Now" for shift logic always comes from `useEventClock()` / `getEventNow()` (demo clock). Never `new Date()` for shifts or coverage.
+6. Live updates: use the `useRealtime(table, handler)` helper. Fallback: SWR `refreshInterval: 3000`.
+7. Every page has a loading skeleton, an empty state and an error state.
+8. UI: shadcn components + lucide icons. Status colors: green = covered, amber = partial, red = gap, blue = info. `(vol)` routes are mobile-first (375px wide).
+9. Animation with Framer Motion only for: list enter/exit (AnimatePresence), count-up numbers, pulsing red gaps, layout moves. Keep it under 300ms except the pulse.
+10. Small commits, message style `feat:` / `fix:` / `chore:`. Run `git pull --rebase origin main` before every push.
+11. Never commit `.env*`. The service-role key is used only in route handlers and the seed script.
+12. Do not refactor, rename or "improve" working code you don't own.
+13. No lorem ipsum and no hardcoded fake stats. Every number on screen is computed from data.
+14. Forms validate with zod and show inline errors. Buttons that call APIs show loading state and toast on success/failure.
+
+## How to work
+- For any non-trivial task: give a plan in max 5 bullets, then implement.
+- Build in thin vertical slices (DB query -> component -> page), test in the browser, commit.
+- Before saying "done": run `npx tsc --noEmit` and `npm run lint`, fix all errors. Engine work: also `npm test`.
+- If something takes more than 10 minutes, stop and tell the team. Do not silently rewrite large areas.
+- Prefer boring, readable code. Comment only the non-obvious parts (especially engine scoring).
+
+## Domain glossary
+- **Zone**: physical area (Entry Gate, First Aid...). **Shift**: zone + role + time window + headcount + required skills.
+- **Seat**: one unit of headcount in a shift. A shift with headcount 3 has 3 seats.
+- **Assignment**: volunteer <-> shift. Status: assigned, confirmed, checked_in, completed, no_show, dropped.
+- **Gap**: a seat with no eligible/assigned volunteer. **Coverage** = filled seats / required seats.
+- **Demo clock**: event time offset so we can "time travel" during the demo (events.clock_offset_minutes).
+
+## Definition of done (per feature)
+Works on seeded data, no console errors, has loading/empty/error states, looks fine at 1280px and 375px, committed and pushed.
