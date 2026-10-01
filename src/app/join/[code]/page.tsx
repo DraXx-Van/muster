@@ -57,7 +57,7 @@ export default function JoinPage() {
           <span className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gap/10 text-gap"><TriangleAlert className="size-7" /></span>
           <h1 className="text-xl font-semibold tracking-tight">This link does not work</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-          <Link href="/" className="mt-6 text-sm text-primary hover:underline">Go to CrewPulse</Link>
+          <Link href="/" className="mt-6 text-sm text-primary hover:underline">Go to Muster</Link>
         </div>
       ) : !data ? (
         <div className="space-y-4 p-4"><Skeleton className="h-52 rounded-3xl" /><Skeleton className="h-40 rounded-2xl" /></div>

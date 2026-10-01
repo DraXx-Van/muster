@@ -70,7 +70,7 @@ export function PlanPreview({ plan, snap, applying, onApply, onDiscard }: { plan
         {/* headline benchmark */}
         <div className="rounded-xl border border-primary/30 bg-linear-to-r from-primary/10 to-transparent p-4">
           <p className="text-sm">
-            CrewPulse fills <span className="font-semibold text-covered tabular">{e.coveragePct}%</span> of seats vs <span className="font-semibold tabular">{n.coveragePct}%</span> for first-come-first-served
+            Muster fills <span className="font-semibold text-covered tabular">{e.coveragePct}%</span> of seats vs <span className="font-semibold tabular">{n.coveragePct}%</span> for first-come-first-served
             {covDelta > 0 && <span className="ml-1 inline-flex items-center gap-0.5 text-covered"><TrendingUp className="size-3.5" />+{covDelta} pts</span>}
             {fairDelta > 0 && <>, with hours spread down <span className="font-semibold text-covered tabular">{fairDelta}%</span><TrendingDown className="ml-0.5 inline size-3.5 text-covered" /></>}
             <span className="text-muted-foreground"> in {e.computeMs} ms.</span>
@@ -80,14 +80,14 @@ export function PlanPreview({ plan, snap, applying, onApply, onDiscard }: { plan
         <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
           <TabsList>
             <TabsTrigger value="both">Side by side</TabsTrigger>
-            <TabsTrigger value="engine">CrewPulse engine</TabsTrigger>
+            <TabsTrigger value="engine">Muster engine</TabsTrigger>
             <TabsTrigger value="naive">Naive (first come)</TabsTrigger>
           </TabsList>
         </Tabs>
 
         {view === 'both' && (
           <div className="grid gap-3 md:grid-cols-2">
-            <StatsCard title="CrewPulse engine" stats={e} tone="engine" winner={{ coverage: e.coveragePct >= n.coveragePct, fairness: e.hoursStdDev <= n.hoursStdDev }} />
+            <StatsCard title="Muster engine" stats={e} tone="engine" winner={{ coverage: e.coveragePct >= n.coveragePct, fairness: e.hoursStdDev <= n.hoursStdDev }} />
             <StatsCard title="Naive (first come first served)" stats={n} tone="naive" winner={{ coverage: n.coveragePct > e.coveragePct, fairness: n.hoursStdDev < e.hoursStdDev }} />
           </div>
         )}

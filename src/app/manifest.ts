@@ -3,8 +3,8 @@ import type { MetadataRoute } from 'next';
 // Lets attendees and volunteers "Add to Home Screen" so the app opens like a native one.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'CrewPulse',
-    short_name: 'CrewPulse',
+    name: 'Muster',
+    short_name: 'Muster',
     description: 'Live updates, alerts and crew coordination for your event.',
     start_url: '/',
     display: 'standalone',

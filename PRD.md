@@ -1,7 +1,7 @@
-# PRD: CrewPulse, Event Volunteer & Crowd Coordination Platform
+# PRD: Muster, Event Volunteer & Crowd Coordination Platform
 
 ## 1. One-line pitch
-Spreadsheets and WhatsApp groups don't survive a real event. CrewPulse assigns the right volunteer to the right role and shift, **re-optimizes in milliseconds when people drop out**, and gives coordinators **live visibility** of every zone.
+Spreadsheets and WhatsApp groups don't survive a real event. Muster assigns the right volunteer to the right role and shift, **re-optimizes in milliseconds when people drop out**, and gives coordinators **live visibility** of every zone.
 
 ## 2. Goals and non-goals
 **Goals**
@@ -35,7 +35,7 @@ See section 5 for the algorithm. UI:
 - **Auto-assign** button -> runs engine -> shows a preview (proposed assignments, gaps, stats) -> **Apply** writes to DB.
 - Stats cards: coverage %, unfilled seats, fairness (std dev of hours), compute time (ms).
 - **Explainability:** click any assignment -> "why": skill match, preference bonus, fairness penalty, score.
-- **Benchmark:** toggle "Naive (first come first served)" vs "CrewPulse engine" side by side -> our headline number.
+- **Benchmark:** toggle "Naive (first come first served)" vs "Muster engine" side by side -> our headline number.
 - **Gaps list:** each unfilled seat with reason ("no First Aid certified volunteer free 12:00 to 15:00").
 - **Dropout flow:** on any assignment "Mark dropped/no-show" -> engine returns ranked **replacement suggestions** with reasons -> one click **Assign** (or "Auto-fill all"). Shows "re-optimized in X ms".
 - **Chaos button** (`api/simulate`): randomly drops 3 volunteers and raises 1 medical issue, to drive the demo.

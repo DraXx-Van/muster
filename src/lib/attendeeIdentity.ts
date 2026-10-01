@@ -6,8 +6,8 @@ import { useSyncExternalStore } from 'react';
 export interface AttendeeIdentity { id: string; token: string; name: string; eventName?: string }
 type Store = Record<string, AttendeeIdentity>;
 
-const KEY = 'crewpulse.attendee.v1';
-const EVT = 'crewpulse:attendee';
+const KEY = 'muster.attendee.v1';
+const EVT = 'muster:attendee';
 
 let cacheRaw: string | null | undefined;
 let cacheParsed: Store = {};

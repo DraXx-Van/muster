@@ -25,8 +25,8 @@ Shared screens: P1 owns the `/assignments` page UI too (it is the engine's face)
 
 ## 2. Setup steps (P4 does this first, 25 min)
 ```bash
-npx create-next-app@latest crewpulse --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
-cd crewpulse
+npx create-next-app@latest muster --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+cd muster
 npx shadcn@latest init
 npx shadcn@latest add button card input label select badge dialog sheet tabs table dropdown-menu checkbox textarea sonner avatar progress tooltip separator scroll-area popover skeleton switch
 npm i @supabase/supabase-js framer-motion recharts lucide-react zod react-hook-form @hookform/resolvers date-fns swr @dnd-kit/core @dnd-kit/sortable qrcode.react

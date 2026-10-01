@@ -9,10 +9,12 @@ import { cn } from '@/lib/utils';
 
 // ---------- logo ----------
 export function LogoMark({ className }: { className?: string }) {
+  // An "M" with a dot above it: people gathering at one point.
   return (
     <span className={cn('brand-gradient inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] text-white shadow-[0_6px_16px_-6px_oklch(0.5_0.22_270/0.7)]', className)}>
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M2.5 13h4l2.2-6 3.6 10 2.6-7 1.2 3h5.4" />
+      <svg viewBox="0 0 24 24" className="size-[19px]" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M6 18V9.5l6 5.5 6-5.5V18" />
+        <circle cx="12" cy="5.8" r="1.75" fill="currentColor" stroke="none" />
       </svg>
     </span>
   );
@@ -22,7 +24,7 @@ export function Logo({ className, textClassName }: { className?: string; textCla
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoMark />
-      <span className={cn('text-[15px] font-semibold tracking-tight', textClassName)}>CrewPulse</span>
+      <span className={cn('text-[15px] font-semibold tracking-tight', textClassName)}>Muster</span>
     </span>
   );
 }

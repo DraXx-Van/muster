@@ -1,4 +1,4 @@
-# CrewPulse: rules for AI assistants
+# Muster: rules for AI assistants
 
 (This same file is copied to AGENTS.md, .cursor/rules/project.mdc and .github/copilot-instructions.md so every tool reads it.)
 

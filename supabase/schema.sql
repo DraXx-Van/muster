@@ -1,4 +1,4 @@
--- CrewPulse schema v2 (multi-event, real accounts). Run once in the Supabase SQL editor
+-- Muster schema v2 (multi-event, real accounts). Run once in the Supabase SQL editor
 -- (choose "Run without RLS"). It DROPS and recreates every table, so only run it on a dev project.
 -- HACKATHON ONLY: RLS is left OFF; access is scoped in the app. Production would add RLS policies.
 

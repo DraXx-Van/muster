@@ -21,12 +21,12 @@ const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.e
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "CrewPulse: run your event crew in real time", template: "%s | CrewPulse" },
+  title: { default: "Muster: run your event crew in real time", template: "%s | Muster" },
   description: "Plan events from templates, assign volunteers by skill, and keep everyone informed live. Attendees join with a QR code, no sign-up.",
-  applicationName: "CrewPulse",
-  appleWebApp: { capable: true, title: "CrewPulse", statusBarStyle: "default" },
+  applicationName: "Muster",
+  appleWebApp: { capable: true, title: "Muster", statusBarStyle: "default" },
   openGraph: {
-    title: "CrewPulse: run your event crew in real time",
+    title: "Muster: run your event crew in real time",
     description: "Skill-based volunteer assignment, live coverage, alerts and QR check-in for attendees.",
     type: "website",
   },

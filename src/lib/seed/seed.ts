@@ -7,7 +7,7 @@ import { serverClient } from '../db/server';
 import { autoAssign } from '../engine';
 import { buildSeed } from './data';
 
-const DEMO_EMAIL = 'demo.coordinator@crewpulse.app';
+const DEMO_EMAIL = 'demo.coordinator@muster.app';
 const DEMO_PASSWORD = 'demo1234';
 
 async function main() {

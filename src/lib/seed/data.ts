@@ -97,7 +97,7 @@ export function buildSeed(opts: { date?: string; ownerId?: string } = {}): SeedD
 
   // staff
   const staff: Volunteer[] = STAFF.map((s, i) => ({
-    id: uuid(), event_id: eventId, user_id: null, avatar_url: null, name: s.name, email: `${s.name.toLowerCase().replace(/[^a-z]+/g, '.')}@crewpulse.demo`,
+    id: uuid(), event_id: eventId, user_id: null, avatar_url: null, name: s.name, email: `${s.name.toLowerCase().replace(/[^a-z]+/g, '.')}@muster.demo`,
     phone: `+91 98${String(10000000 + i * 1234567).slice(0, 8)}`, role: s.role, skills: [...s.skills],
     availability: [win('09', '21')], preferred_zone_ids: [], max_hours: 12, reliability: 1, verified: true,
   }));

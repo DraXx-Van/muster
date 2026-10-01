@@ -32,7 +32,7 @@ export const useAttendee = (): Ctx => {
   return c;
 };
 
-const seenKey = (eventId: string, id: string) => `crewpulse.seen.${eventId}.${id}`;
+const seenKey = (eventId: string, id: string) => `muster.seen.${eventId}.${id}`;
 
 export function AttendeeProvider({ eventId, children }: { eventId: string; children: ReactNode }) {
   const identity = useIdentity(eventId);

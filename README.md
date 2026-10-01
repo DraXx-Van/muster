@@ -1,4 +1,4 @@
-# CrewPulse
+# Muster
 
 Volunteer and crowd coordination for events. Coordinators create an event from a template, volunteers join with a code and add their skills, and **attendees just scan a QR code and pick a name** (no account, no email). The assignment engine matches skills, availability, preferences and fair hours, and re-optimizes in milliseconds when someone drops out.
 
@@ -26,20 +26,15 @@ npm run dev                       # http://localhost:3000
 
 Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 
-Optional: `npm run seed` creates a demo coordinator (`demo.coordinator@crewpulse.app` / `demo1234`) with a 60-volunteer event to try the engine at scale. The app itself ships with no data.
+Optional: `npm run seed` creates a demo coordinator (`demo.coordinator@muster.app` / `demo1234`) with a 60-volunteer event to try the engine at scale. The app itself ships with no data.
 
 ## Deploy to Vercel
 
-1. **Supabase:** create a project. In the SQL editor run `supabase/schema.sql` (fresh project) or the migrations in `supabase/migrations/` (existing project). Choose **Run without RLS**.
-2. **Push the repo** to GitHub and **import it in Vercel** (framework: Next.js is detected). `vercel.json` pins functions to the Mumbai region (`bom1`) to sit close to an ap-south Supabase project; change it to match your Supabase region.
-3. **Environment variables** (Project Settings, Environment Variables), the same three as `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the publishable key)
-   - `SUPABASE_SERVICE_ROLE_KEY` (the secret key, server only, never prefix with `NEXT_PUBLIC_`)
-4. **Deploy.** QR codes and links are built from the live domain automatically, so printed posters work on whatever URL you deploy to. Storage buckets (`avatars`, `covers`) are created on first upload.
-5. **Smoke test on the deployed URL:** create a coordinator account, create an event from a template, open the QR poster, scan it with a phone, enter a name, and send an announcement from the dashboard.
+Full step-by-step guide, smoke test and troubleshooting: **[DEPLOY.md](DEPLOY.md)**.
 
-Notes for production: Row Level Security is off for the hackathon. Access is enforced in the app and in the API routes (every mutation checks the caller's role in the event), but a production launch should add RLS policies. There is no password reset or email verification yet, and times are IST.
+Short version: run `supabase/schema.sql` in Supabase, push to GitHub, import the repo in Vercel, add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`, deploy. QR codes use the live domain automatically.
+
+Notes for production: Row Level Security is off for the hackathon. Access is enforced in the app and in the API routes, but a real launch should add RLS policies. There is no password reset or email verification yet, and times are IST.
 
 ## How the engine works (`src/lib/engine`)
 
