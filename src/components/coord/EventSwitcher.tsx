@@ -6,7 +6,7 @@ import { CalendarPlus, Check, ChevronsUpDown, LayoutGrid } from 'lucide-react';
 import { listCoordinatorEvents } from '@/lib/db/queries';
 import { useAuth } from '@/lib/auth';
 import type { EventRow } from '@/lib/types';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { EventCover } from '@/components/common/visual';
 import { PhaseBadge } from '@/components/common/EventBits';
 
@@ -26,14 +26,16 @@ export function EventSwitcher({ event }: { event: EventRow }) {
         <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-72">
-        <DropdownMenuLabel>Your events</DropdownMenuLabel>
-        {(data ?? []).map(({ event: e }) => (
-          <DropdownMenuItem key={e.id} onClick={() => router.push(`/e/${e.id}/dashboard`)} className="gap-3 py-2">
-            <EventCover event={e} overlay={false} className="size-8 shrink-0 rounded-lg" />
-            <span className="min-w-0 flex-1 truncate">{e.name}</span>
-            {e.id === event.id && <Check className="size-4 text-primary" />}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Your events</DropdownMenuLabel>
+          {(data ?? []).map(({ event: e }) => (
+            <DropdownMenuItem key={e.id} onClick={() => router.push(`/e/${e.id}/dashboard`)} className="gap-3 py-2">
+              <EventCover event={e} overlay={false} className="size-8 shrink-0 rounded-lg" />
+              <span className="min-w-0 flex-1 truncate">{e.name}</span>
+              {e.id === event.id && <Check className="size-4 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push('/events')}><LayoutGrid /> All events</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push('/events/new')}><CalendarPlus /> Create a new event</DropdownMenuItem>

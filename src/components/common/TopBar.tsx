@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { ChevronDown, LogOut, Moon, Sun, UserCog } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AccountDialog } from './AccountDialog';
 import { PersonAvatar } from './kit';
 import { Logo } from './visual';
@@ -39,10 +39,12 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
           <ChevronDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel>
-            <span className="block truncate text-sm font-semibold text-foreground">{profile.full_name}</span>
-            <span className="block truncate text-xs capitalize text-muted-foreground">{profile.email} · {profile.account_type}</span>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <span className="block truncate text-sm font-semibold text-foreground">{profile.full_name}</span>
+              <span className="block truncate text-xs capitalize text-muted-foreground">{profile.email} · {profile.account_type}</span>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setOpen(true)}><UserCog /> Your account and photo</DropdownMenuItem>
           <ThemeToggleItem />
