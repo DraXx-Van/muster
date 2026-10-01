@@ -1,23 +1,26 @@
 'use client';
-// One shared snapshot for the whole app: SWR (3 s polling fallback) + realtime invalidation + demo clock + live feed.
+// Shared data for ONE event: SWR snapshot (3 s polling fallback) + realtime invalidation + demo clock + live feed.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import useSWR from 'swr';
 import { getSnapshot } from './db/queries';
 import { useRealtime } from './realtime';
 import { useEventClock } from './clock';
+import { useAuth } from './auth';
 import { fmtRange } from './engine';
-import type { Announcement, Assignment, Issue, Snapshot, Task } from './types';
+import type { Announcement, Assignment, Complaint, Issue, Snapshot, Task, Volunteer } from './types';
 
 export type FeedTone = 'info' | 'good' | 'warn' | 'bad';
-export interface FeedItem { id: string; at: number; tone: FeedTone; text: string; kind: 'checkin' | 'drop' | 'issue' | 'announce' | 'task' | 'assign' }
+export interface FeedItem { id: string; at: number; tone: FeedTone; text: string; kind: 'checkin' | 'drop' | 'issue' | 'announce' | 'task' | 'assign' | 'complaint' | 'join' }
 
 interface Ctx {
+  eventId: string;
   snap: Snapshot | undefined;
   error: Error | undefined;
   isLoading: boolean;
   refresh: () => Promise<unknown>;
-  now: Date;          // demo-clock time
-  real: Date;         // wall-clock time (issue deadlines)
+  me: Volunteer | undefined; // the signed-in person's row in this event (volunteer, coordinator or organizer)
+  now: Date;                 // event time (real time plus the demo offset, normally zero)
+  real: Date;                // wall-clock time (issue deadlines)
   offsetMinutes: number;
   feed: FeedItem[];
 }
@@ -29,16 +32,17 @@ export const useData = (): Ctx => {
   return c;
 };
 
-export function DataProvider({ children }: { children: ReactNode }) {
-  const { data, error, isLoading, mutate } = useSWR<Snapshot>('snapshot', () => getSnapshot(), {
-    refreshInterval: 3000, keepPreviousData: true, revalidateOnFocus: true,
+export function DataProvider({ eventId, children }: { eventId: string; children: ReactNode }) {
+  const { user } = useAuth();
+  const { data, error, isLoading, mutate } = useSWR<Snapshot>(['snapshot', eventId], () => getSnapshot(eventId), {
+    refreshInterval: 3000, keepPreviousData: false, revalidateOnFocus: true, shouldRetryOnError: false,
   });
   const { now, real, offsetMinutes } = useEventClock(data?.event);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const snapRef = useRef<Snapshot | undefined>(undefined);
   useEffect(() => { snapRef.current = data; }, [data]);
 
-  // debounce bursts of realtime events into one refetch
+  const filter = `event_id=eq.${eventId}`;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bump = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -57,6 +61,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const items: FeedItem[] = [
       ...data.issues.slice(0, 4).map((i): FeedItem => ({ id: `i${i.id}`, at: new Date(i.created_at).getTime(), tone: i.severity === 'critical' || i.severity === 'high' ? 'bad' : 'warn', kind: 'issue', text: `${i.severity} ${i.category.replace('_', ' ')} raised in ${data.zones.find((z) => z.id === i.zone_id)?.name ?? 'the venue'}` })),
       ...data.announcements.slice(0, 3).map((a): FeedItem => ({ id: `a${a.id}`, at: new Date(a.created_at).getTime(), tone: a.urgent ? 'warn' : 'info', kind: 'announce', text: `Announcement: ${a.title}` })),
+      ...data.complaints.filter((c) => c.status === 'open').slice(0, 3).map((c): FeedItem => ({ id: `c${c.id}`, at: new Date(c.created_at).getTime(), tone: 'warn', kind: 'complaint', text: `Complaint from ${c.submitter_name}: ${c.category.replace('_', ' ')}` })),
     ].sort((a, b) => b.at - a.at);
     setFeed(items);
   }, [data]);
@@ -66,16 +71,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const s = snapRef.current;
     if (!s || e.type === 'DELETE') return;
     const shift = s.shifts.find((x) => x.id === e.row.shift_id);
-    const zone = s.zones.find((z) => z.id === shift?.zone_id)?.name ?? 'a zone';
+    if (!shift) return; // belongs to another event
+    const zone = s.zones.find((z) => z.id === shift.zone_id)?.name ?? 'a zone';
     const who = s.volunteers.find((v) => v.id === e.row.volunteer_id)?.name ?? 'A volunteer';
-    const when = shift ? ` (${fmtRange(shift)})` : '';
+    const when = ` (${fmtRange(shift)})`;
     if (e.type === 'INSERT') push({ tone: 'info', kind: 'assign', text: `${who} assigned to ${zone}${when}` });
     else if (e.row.status === 'checked_in') push({ tone: 'good', kind: 'checkin', text: `${who} checked in at ${zone}` });
     else if (e.row.status === 'completed') push({ tone: 'info', kind: 'checkin', text: `${who} checked out of ${zone}` });
     else if (e.row.status === 'dropped') push({ tone: 'bad', kind: 'drop', text: `${who} dropped out of ${zone}${when}` });
     else if (e.row.status === 'no_show') push({ tone: 'bad', kind: 'drop', text: `${who} is a no-show at ${zone}${when}` });
     else push({ tone: 'info', kind: 'assign', text: `${who} moved to ${zone}${when}` });
-  });
+  }, filter);
   useRealtime<Issue>('issues', (e) => {
     bump();
     const s = snapRef.current;
@@ -86,21 +92,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     else if (e.row.status === 'acknowledged') push({ tone: 'good', kind: 'issue', text: `${cat} issue in ${zone} acknowledged` });
     else if (e.row.status === 'resolved') push({ tone: 'good', kind: 'issue', text: `${cat} issue in ${zone} resolved` });
     else if (e.row.escalation_level > 0) push({ tone: 'bad', kind: 'issue', text: `${cat} issue in ${zone} escalated to level ${e.row.escalation_level}` });
-  });
+  }, filter);
   useRealtime<Announcement>('announcements', (e) => {
     bump();
     if (e.type === 'INSERT') push({ tone: e.row.urgent ? 'warn' : 'info', kind: 'announce', text: `Announcement: ${e.row.title}` });
-  });
+  }, filter);
+  useRealtime<Complaint>('complaints', (e) => {
+    bump();
+    if (e.type === 'INSERT') push({ tone: 'warn', kind: 'complaint', text: `New complaint from ${e.row.submitter_name}: ${e.row.category.replace('_', ' ')}` });
+  }, filter);
   useRealtime<Task>('tasks', (e) => {
     bump();
     if (e.type === 'UPDATE') push({ tone: 'info', kind: 'task', text: `Task "${e.row.title}" is now ${e.row.status.replace('_', ' ')}` });
-  });
-  useRealtime('shifts', bump);
-  useRealtime('notifications', bump);
+  }, filter);
+  useRealtime<Volunteer>('volunteers', (e) => {
+    bump();
+    if (e.type === 'INSERT') push({ tone: 'good', kind: 'join', text: `${e.row.name} joined the ${e.row.role === 'volunteer' ? 'volunteer team' : 'coordinators'}` });
+  }, filter);
+  useRealtime('shifts', bump, filter);
+  useRealtime('zones', bump, filter);
+  useRealtime('notifications', bump, filter);
 
+  const me = useMemo(() => data?.volunteers.find((v) => v.user_id === user?.id), [data, user]);
   const value = useMemo<Ctx>(
-    () => ({ snap: data, error: error as Error | undefined, isLoading, refresh: () => mutate(), now, real, offsetMinutes, feed }),
-    [data, error, isLoading, mutate, now, real, offsetMinutes, feed],
+    () => ({ eventId, snap: data, error: error as Error | undefined, isLoading, refresh: () => mutate(), me, now, real, offsetMinutes, feed }),
+    [eventId, data, error, isLoading, mutate, me, now, real, offsetMinutes, feed],
   );
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }

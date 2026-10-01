@@ -14,7 +14,7 @@ const input: AutoAssignInput = { volunteers, shifts: seed.shifts, existing: [] }
 const NOW = new Date('2026-10-03T03:00:00Z'); // 08:30 IST, before the first shift
 
 const toAssignments = (list: NewAssignment[], status: Assignment['status'] = 'assigned'): Assignment[] =>
-  list.map((a, i) => ({ id: `a${i}`, ...a, status, checked_in_at: null, checked_out_at: null }));
+  list.map((a, i) => ({ id: `a${i}`, event_id: 'e', ...a, status, checked_in_at: null, checked_out_at: null }));
 
 /** Asserts every hard constraint for a full set of assignments. */
 function expectValid(list: { shift_id: string; volunteer_id: string }[]) {
@@ -139,8 +139,8 @@ describe('computeCoverage + suggestMoves', () => {
   it('live mode counts only checked-in people once the grace period is over', () => {
     const s = seed.shifts[0];
     const a: Assignment[] = [
-      { id: '1', shift_id: s.id, volunteer_id: 'x', status: 'checked_in', score: 0, reason: '', checked_in_at: null, checked_out_at: null },
-      { id: '2', shift_id: s.id, volunteer_id: 'y', status: 'assigned', score: 0, reason: '', checked_in_at: null, checked_out_at: null },
+      { id: '1', event_id: 'e', shift_id: s.id, volunteer_id: 'x', status: 'checked_in', score: 0, reason: '', checked_in_at: null, checked_out_at: null },
+      { id: '2', event_id: 'e', shift_id: s.id, volunteer_id: 'y', status: 'assigned', score: 0, reason: '', checked_in_at: null, checked_out_at: null },
     ];
     const late = new Date(new Date(s.starts_at).getTime() + 30 * 60_000);
     const early = new Date(new Date(s.starts_at).getTime() - 30 * 60_000);
@@ -155,7 +155,7 @@ describe('computeCoverage + suggestMoves', () => {
     const mk = (id: string, zone: string, hc: number): Shift => ({ id, event_id: 'e', zone_id: zone, role_name: 'r', required_skills: ['Hospitality'], starts_at: start, ends_at: end, headcount: hc });
     const shifts = [mk('over', zA.id, 1), mk('short', zB.id, 1)];
     const vols = [1, 2].map((n): Volunteer => ({ ...volunteers[0], id: `v${n}`, name: `V${n}`, skills: ['Hospitality'], availability: [{ start, end }], preferred_zone_ids: [] }));
-    const asg: Assignment[] = vols.map((v, i) => ({ id: `${i}`, shift_id: 'over', volunteer_id: v.id, status: 'assigned', score: 0, reason: '', checked_in_at: null, checked_out_at: null }));
+    const asg: Assignment[] = vols.map((v, i) => ({ id: `${i}`, event_id: 'e', shift_id: 'over', volunteer_id: v.id, status: 'assigned', score: 0, reason: '', checked_in_at: null, checked_out_at: null }));
     const cells = computeCoverage(shifts, asg, 'planned', NOW);
     const moves = suggestMoves(cells, vols, shifts, asg, NOW, seed.zones);
     expect(moves).toHaveLength(1);

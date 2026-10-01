@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Snapshot } from '@/lib/types';
 import { post } from '@/lib/post';
+import { useData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -24,9 +25,10 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 /** Raise an issue. It is routed to the zone coordinator server-side and escalates if nobody acknowledges it. */
-export function IssueDialog({ open, onClose, snap, raisedBy, defaultZone, onCreated }: {
-  open: boolean; onClose: () => void; snap: Snapshot; raisedBy: string | null; defaultZone?: string; onCreated: () => void;
+export function IssueDialog({ open, onClose, snap, defaultZone, onCreated }: {
+  open: boolean; onClose: () => void; snap: Snapshot; defaultZone?: string; onCreated: () => void;
 }) {
+  const { eventId } = useData();
   const [saving, setSaving] = useState(false);
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -37,7 +39,7 @@ export function IssueDialog({ open, onClose, snap, raisedBy, defaultZone, onCrea
   const submit = async (v: Values) => {
     setSaving(true);
     try {
-      await post('/api/issues', { ...v, raised_by: raisedBy });
+      await post('/api/issues', { ...v, eventId });
       toast.success('Issue raised', { description: 'The zone coordinator has been alerted.' });
       reset({ category: 'medical', severity: 'high', zone_id: v.zone_id, description: '' });
       onCreated();

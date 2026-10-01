@@ -68,7 +68,7 @@ export function PlanPreview({ plan, snap, applying, onApply, onDiscard }: { plan
     >
       <div className="space-y-5">
         {/* headline benchmark */}
-        <div className="rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-4">
+        <div className="rounded-xl border border-primary/30 bg-linear-to-r from-primary/10 to-transparent p-4">
           <p className="text-sm">
             CrewPulse fills <span className="font-semibold text-covered tabular">{e.coveragePct}%</span> of seats vs <span className="font-semibold tabular">{n.coveragePct}%</span> for first-come-first-served
             {covDelta > 0 && <span className="ml-1 inline-flex items-center gap-0.5 text-covered"><TrendingUp className="size-3.5" />+{covDelta} pts</span>}
@@ -129,7 +129,7 @@ export function PlanPreview({ plan, snap, applying, onApply, onDiscard }: { plan
                     const v = snap.volunteers.find((x) => x.id === a.volunteer_id);
                     return (
                       <tr key={a.shift_id + a.volunteer_id} className="border-t">
-                        <td className="px-3 py-1.5"><span className="flex items-center gap-2"><PersonAvatar name={v?.name ?? '?'} size="sm" />{v?.name}</span></td>
+                        <td className="px-3 py-1.5"><span className="flex items-center gap-2"><PersonAvatar name={v?.name ?? '?'} src={v?.avatar_url} size="sm" />{v?.name}</span></td>
                         <td className="px-3 py-1.5 text-muted-foreground"><span className="text-foreground">{z?.name}</span> · {fmtRange(s)}</td>
                         <td className="px-3 py-1.5 text-right tabular">{view === 'naive' ? '-' : a.score}</td>
                         <td className="px-1 py-1.5">

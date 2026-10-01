@@ -17,19 +17,21 @@ function headCoordinator(coordinators: Volunteer[], exceptId: string | null): Vo
   return all.find((c) => c.id !== exceptId) ?? all[0];
 }
 const organizer = (people: Volunteer[]) => people.find((p) => p.role === 'organizer');
+/** The zone that handles medical cases, found by name so any event template works. */
+const medicalZone = (zones: Zone[]) => zones.find((z) => /first aid|medic/i.test(z.name));
 
 /** Initial routing of a new issue: zone coordinator owns it; medical also pages the First Aid coordinator. */
 export function routeIssue(
   issue: NewIssue, people: Volunteer[], zones: Zone[], nowReal: Date,
 ): { assigned_to: string | null; escalation_level: number; ack_deadline: string; notifications: Note[] } {
   const zone = zones.find((z) => z.id === issue.zone_id);
-  const owner = people.find((p) => p.id === zone?.coordinator_id) ?? headCoordinator(people, null);
+  // zone coordinator, else a head coordinator, else the organizer (an event may have only one coordinator)
+  const owner = people.find((p) => p.id === zone?.coordinator_id) ?? headCoordinator(people, null) ?? organizer(people);
   const notifications: Note[] = [];
   const label = `${issue.severity.toUpperCase()} ${issue.category.replace('_', ' ')}${zone ? ` at ${zone.name}` : ''}`;
   if (owner) notifications.push({ volunteer_id: owner.id, kind: 'issue', title: label, body: issue.description });
   if (issue.category === 'medical') {
-    const firstAidZone = zones.find((z) => z.name === 'First Aid');
-    const medic = people.find((p) => p.id === firstAidZone?.coordinator_id);
+    const medic = people.find((p) => p.id === medicalZone(zones)?.coordinator_id);
     if (medic && medic.id !== owner?.id) notifications.push({ volunteer_id: medic.id, kind: 'issue', title: label, body: issue.description });
   }
   return { assigned_to: owner?.id ?? null, escalation_level: 0, ack_deadline: deadline(nowReal, issue.severity), notifications };
@@ -44,7 +46,9 @@ export function tickEscalations(issues: Issue[], people: Volunteer[], zones: Zon
     if (i.status !== 'open' || !i.ack_deadline || ms(i.ack_deadline) > nowReal.getTime()) continue;
     if (i.escalation_level >= MAX_ESCALATION_LEVEL) continue;
     const level = i.escalation_level + 1;
-    const next = level === 1 ? headCoordinator(people, i.assigned_to) : organizer(people) ?? headCoordinator(people, i.assigned_to);
+    const next = level === 1
+      ? headCoordinator(people, i.assigned_to) ?? organizer(people)
+      : organizer(people) ?? headCoordinator(people, i.assigned_to);
     updates.push({ id: i.id, escalation_level: level, assigned_to: next?.id ?? i.assigned_to, ack_deadline: deadline(nowReal, i.severity) });
     if (next) {
       notifications.push({

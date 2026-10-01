@@ -26,7 +26,7 @@ function CardBody({ task, snap, lifted }: { task: Task; snap: Snapshot; lifted?:
       <div className="mt-2.5 flex items-center gap-2">
         {zone && <span className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground"><span className="size-1.5 rounded-full" style={{ background: zone.color }} />{zone.name}</span>}
         <span className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium capitalize', PRIORITY[task.priority])}>{task.priority}</span>
-        <span className="ml-auto">{who ? <span title={who.name}><PersonAvatar name={who.name} size="sm" /></span> : <span className="text-[11px] text-muted-foreground">Unassigned</span>}</span>
+        <span className="ml-auto">{who ? <span title={who.name}><PersonAvatar name={who.name} src={who.avatar_url} size="sm" /></span> : <span className="text-[11px] text-muted-foreground">Unassigned</span>}</span>
       </div>
     </div>
   );

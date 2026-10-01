@@ -9,13 +9,31 @@ export const SKILLS = [
 ] as const;
 export type Skill = (typeof SKILLS)[number];
 
+export type AccountType = 'coordinator' | 'volunteer' | 'attendee';
+
+/** One row per login (auth.users). */
+export interface Profile {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  account_type: AccountType;
+}
+
 export interface EventRow {
   id: string;
+  owner_id: string;
   name: string;
   venue: string | null;
+  description: string | null;
   starts_at: string;
   ends_at: string;
   clock_offset_minutes: number;
+  join_code: string;
+  template_id: string | null;
+  cover_url: string | null;
+  created_at: string;
 }
 
 export interface AvailabilityWindow { start: string; end: string }
@@ -23,9 +41,11 @@ export interface AvailabilityWindow { start: string; end: string }
 export interface Volunteer {
   id: string;
   event_id: string;
+  user_id: string | null; // null = roster entry added by hand, no login
   name: string;
   email: string | null;
   phone: string | null;
+  avatar_url: string | null;
   role: PersonRole;
   skills: string[];
   availability: AvailabilityWindow[];
@@ -60,6 +80,7 @@ export type AssignmentStatus =
 
 export interface Assignment {
   id: string;
+  event_id: string;
   shift_id: string;
   volunteer_id: string;
   status: AssignmentStatus;
@@ -106,7 +127,7 @@ export interface Issue {
 export interface Announcement {
   id: string;
   event_id: string;
-  audience: 'all' | 'zone' | 'role';
+  audience: AnnouncementAudience;
   zone_id: string | null;
   role_name: string | null;
   title: string;
@@ -116,8 +137,44 @@ export interface Announcement {
   created_at: string;
 }
 
+/** all = volunteers + attendees; volunteers / attendees = that group only; zone / role = volunteers on those shifts. */
+export type AnnouncementAudience = 'all' | 'volunteers' | 'attendees' | 'zone' | 'role';
+
+export interface Attendee {
+  id: string;
+  event_id: string;
+  user_id: string | null; // null for QR attendees (no account)
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+}
+
+export type ComplaintCategory = 'medical' | 'safety' | 'facilities' | 'food' | 'crowd' | 'staff' | 'lost_found' | 'other';
+export type ComplaintStatus = 'open' | 'in_review' | 'resolved';
+export interface Complaint {
+  id: string;
+  event_id: string;
+  submitted_by: string | null;
+  attendee_id: string | null;
+  submitter_name: string;
+  contact: string | null;
+  category: ComplaintCategory;
+  zone_id: string | null;
+  description: string;
+  status: ComplaintStatus;
+  response: string | null;
+  issue_id: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}
+
+export type NotificationDraft = Omit<Notification, 'id' | 'event_id' | 'read' | 'created_at'>;
+
 export interface Notification {
   id: string;
+  event_id: string;
   volunteer_id: string;
   kind: 'announcement' | 'assignment' | 'issue' | 'escalation';
   title: string;
@@ -137,6 +194,8 @@ export interface Snapshot {
   issues: Issue[];
   announcements: Announcement[];
   notifications: Notification[];
+  complaints: Complaint[];
+  attendees: Attendee[];
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +266,6 @@ export interface MoveSuggestion {
 
 export interface EscalationResult {
   updates: (Partial<Issue> & { id: string })[];                 // issue rows to write back
-  notifications: Omit<Notification, 'id' | 'read' | 'created_at'>[]; // to insert for the new assignees
+  notifications: NotificationDraft[]; // to insert for the new assignees (the caller adds event_id)
 }
 // tickEscalations(issues: Issue[], coordinators: Volunteer[], zones: Zone[], nowReal: Date): EscalationResult

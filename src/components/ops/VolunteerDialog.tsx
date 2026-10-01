@@ -5,24 +5,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SKILLS, type Snapshot } from '@/lib/types';
-import { createVolunteer } from '@/lib/db/queries';
+import { SKILLS, type Snapshot, type Volunteer } from '@/lib/types';
+import { createVolunteer, updateVolunteer } from '@/lib/db/queries';
+import { useAuth } from '@/lib/auth';
 import { timeBlocks } from '@/lib/derive';
+import { ms } from '@/lib/engine/time';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AvatarUploader } from '@/components/common/AvatarUploader';
 import { FieldError } from '@/components/common/kit';
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter the full name').max(80),
-  phone: z.string().trim().regex(/^\+?[\d\s-]{10,15}$/, 'Enter a valid phone number (10+ digits)'),
-  email: z.string().trim().email('Enter a valid email address'),
-  skills: z.array(z.string()).min(1, 'Pick at least one skill'),
+  phone: z.string().trim().refine((v) => v === '' || /^\+?[\d\s-]{10,15}$/.test(v), 'Enter a valid phone number (10+ digits)'),
+  email: z.string().trim().refine((v) => v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Enter a valid email address'),
+  skills: z.array(z.string()),
   blocks: z.array(z.string()).min(1, 'Pick at least one time block they can work'),
   zones: z.array(z.string()),
-  max_hours: z.number({ error: 'Enter a number' }).min(1, 'At least 1 hour').max(12, 'At most 12 hours'),
+  max_hours: z.number({ error: 'Enter a number' }).min(1, 'At least 1 hour').max(16, 'At most 16 hours'),
 });
 type Values = z.infer<typeof schema>;
 
@@ -42,13 +45,29 @@ function Chips({ options, value, onChange }: { options: { value: string; label: 
   );
 }
 
-/** Register a volunteer: skills, availability (as event time blocks), preferred zones, max hours. */
-export function VolunteerDialog({ open, onClose, snap, onCreated }: { open: boolean; onClose: () => void; snap: Snapshot; onCreated: () => void }) {
+/** Which time blocks does this volunteer's availability fully cover? */
+function coveredBlocks(v: Volunteer, snap: Snapshot): string[] {
+  return timeBlocks(snap.shifts).filter((b) => v.availability.some((w) => ms(w.start) <= ms(b.start) && ms(w.end) >= ms(b.end))).map((b) => b.key);
+}
+
+const dayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+
+type Mode = 'create' | 'edit' | 'self';
+
+/**
+ * Volunteer form. create: a coordinator adds a roster entry. edit: a coordinator edits one.
+ * self: a volunteer edits their own skills, availability, preferred zones and hours (name and photo live in their account).
+ */
+export function VolunteerForm({ snap, mode, volunteer, onDone }: { snap: Snapshot; mode: Mode; volunteer?: Volunteer | null; onDone: () => void }) {
   const [saving, setSaving] = useState(false);
+  const { reloadProfile, profile } = useAuth();
   const blocks = useMemo(() => timeBlocks(snap.shifts), [snap.shifts]);
+  const multiDay = blocks.length > 0 && Date.parse(blocks[blocks.length - 1].end) - Date.parse(blocks[0].start) > 24 * 3_600_000;
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', phone: '', email: '', skills: [], blocks: [], zones: [], max_hours: 6 },
+    defaultValues: volunteer
+      ? { name: volunteer.name, phone: volunteer.phone ?? '', email: volunteer.email ?? '', skills: volunteer.skills, blocks: coveredBlocks(volunteer, snap), zones: volunteer.preferred_zone_ids, max_hours: volunteer.max_hours }
+      : { name: '', phone: '', email: '', skills: [], blocks: [], zones: [], max_hours: 6 },
   });
 
   const submit = async (v: Values) => {
@@ -62,26 +81,30 @@ export function VolunteerDialog({ open, onClose, snap, onCreated }: { open: bool
         if (last && last.end === b.start) last.end = b.end;
         else windows.push({ start: b.start, end: b.end });
       }
-      await createVolunteer({
-        event_id: snap.event.id, name: v.name, phone: v.phone, email: v.email, role: 'volunteer', skills: v.skills,
-        availability: windows, preferred_zone_ids: v.zones, max_hours: v.max_hours, reliability: 1, verified: false,
-      });
-      toast.success(`${v.name} registered`, { description: 'Run auto-assign to place them.' });
-      reset();
-      onCreated();
-      onClose();
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not register the volunteer'); }
+      const common = { skills: v.skills, availability: windows, preferred_zone_ids: v.zones, max_hours: v.max_hours };
+      if (mode === 'create') {
+        await createVolunteer({ ...common, event_id: snap.event.id, name: v.name, phone: v.phone || null, email: v.email || null, role: 'volunteer', reliability: 1, verified: false });
+        toast.success(`${v.name} added to the roster`, { description: 'Run auto-assign to place them.' });
+        reset();
+      } else if (mode === 'edit' && volunteer) {
+        await updateVolunteer(volunteer.id, { ...common, name: v.name, phone: v.phone || null, email: v.email || null });
+        toast.success('Volunteer updated');
+      } else if (volunteer) {
+        await updateVolunteer(volunteer.id, common);
+        toast.success('Saved. Coordinators will use this when assigning shifts.');
+      }
+      onDone();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not save'); }
     finally { setSaving(false); }
   };
 
+  const showContact = mode !== 'self';
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Register volunteer</DialogTitle>
-          <DialogDescription>Skills and availability drive automatic shift assignment.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+      {mode === 'self' && profile && <AvatarUploader name={profile.full_name} src={profile.avatar_url} onUploaded={() => void reloadProfile()} />}
+      {mode === 'edit' && volunteer && <AvatarUploader name={volunteer.name} src={volunteer.avatar_url} volunteerId={volunteer.id} onUploaded={onDone} />}
+      {showContact && (
+        <>
           <div>
             <Label htmlFor="v-name">Full name</Label>
             <Input id="v-name" aria-invalid={!!errors.name} {...register('name')} />
@@ -99,32 +122,46 @@ export function VolunteerDialog({ open, onClose, snap, onCreated }: { open: bool
               <FieldError message={errors.email?.message} />
             </div>
           </div>
-          <div>
-            <Label>Skills</Label>
-            <Controller control={control} name="skills" render={({ field }) => <Chips options={SKILLS.map((s) => ({ value: s, label: s }))} value={field.value} onChange={field.onChange} />} />
-            <FieldError message={errors.skills?.message} />
-          </div>
-          <div>
-            <Label>Available during</Label>
-            <Controller control={control} name="blocks" render={({ field }) => (
-              <>
-                <Chips options={blocks.map((b) => ({ value: b.key, label: b.label }))} value={field.value} onChange={field.onChange} />
-                <button type="button" className="mt-1.5 text-xs text-primary hover:underline" onClick={() => field.onChange(blocks.map((b) => b.key))}>Select the whole day</button>
-              </>
-            )} />
-            <FieldError message={errors.blocks?.message} />
-          </div>
-          <div>
-            <Label>Preferred zones (optional)</Label>
-            <Controller control={control} name="zones" render={({ field }) => <Chips options={snap.zones.map((z) => ({ value: z.id, label: z.name }))} value={field.value} onChange={field.onChange} />} />
-          </div>
-          <div className="w-40">
-            <Label htmlFor="v-max">Max hours</Label>
-            <Input id="v-max" type="number" step="0.5" aria-invalid={!!errors.max_hours} {...register('max_hours', { valueAsNumber: true })} />
-            <FieldError message={errors.max_hours?.message} />
-          </div>
-          <Button type="submit" className="w-full" disabled={saving}>{saving && <Loader2 className="animate-spin" />} Register volunteer</Button>
-        </form>
+        </>
+      )}
+      <div>
+        <Label>Skills</Label>
+        <Controller control={control} name="skills" render={({ field }) => <Chips options={SKILLS.map((s) => ({ value: s, label: s }))} value={field.value} onChange={field.onChange} />} />
+        <p className="mt-1 text-xs text-muted-foreground">Shifts that need a skill are only given to people who have it.</p>
+      </div>
+      <div>
+        <Label>Available during</Label>
+        <Controller control={control} name="blocks" render={({ field }) => (
+          <>
+            {blocks.length === 0 ? <p className="text-sm text-muted-foreground">No shifts exist yet. The coordinator needs to set them up first.</p> : <Chips options={blocks.map((b) => ({ value: b.key, label: multiDay ? `${dayFmt.format(new Date(b.start))} ${b.label}` : b.label }))} value={field.value} onChange={field.onChange} />}
+            {blocks.length > 0 && <button type="button" className="mt-1.5 text-xs text-primary hover:underline" onClick={() => field.onChange(blocks.map((b) => b.key))}>Select everything</button>}
+          </>
+        )} />
+        <FieldError message={errors.blocks?.message} />
+      </div>
+      <div>
+        <Label>Preferred zones (optional)</Label>
+        <Controller control={control} name="zones" render={({ field }) => <Chips options={snap.zones.map((z) => ({ value: z.id, label: z.name }))} value={field.value} onChange={field.onChange} />} />
+      </div>
+      <div className="w-40">
+        <Label htmlFor="v-max">Max hours</Label>
+        <Input id="v-max" type="number" step="0.5" aria-invalid={!!errors.max_hours} {...register('max_hours', { valueAsNumber: true })} />
+        <FieldError message={errors.max_hours?.message} />
+      </div>
+      <Button type="submit" className="w-full" disabled={saving}>{saving && <Loader2 className="animate-spin" />} {mode === 'create' ? 'Add to roster' : 'Save'}</Button>
+    </form>
+  );
+}
+
+export function VolunteerDialog({ open, onClose, snap, volunteer, onCreated }: { open: boolean; onClose: () => void; snap: Snapshot; volunteer?: Volunteer | null; onCreated: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{volunteer ? `Edit ${volunteer.name}` : 'Add a volunteer by hand'}</DialogTitle>
+          <DialogDescription>{volunteer ? 'Skills and availability drive automatic shift assignment.' : 'For people without a login. Volunteers can also sign up themselves with your join code.'}</DialogDescription>
+        </DialogHeader>
+        {open && <VolunteerForm key={volunteer?.id ?? 'new'} snap={snap} mode={volunteer ? 'edit' : 'create'} volunteer={volunteer} onDone={() => { onCreated(); onClose(); }} />}
       </DialogContent>
     </Dialog>
   );

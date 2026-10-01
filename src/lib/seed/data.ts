@@ -67,7 +67,7 @@ const SKILL_ZONE: Record<string, string> = {
 // extras never include the scarce skills, so First Aid stays at exactly 4 and AV/Tech at exactly 6
 const EXTRA_SKILLS = ['Crowd Control', 'Registration', 'Parking/Traffic', 'Hospitality', 'Multilingual', 'Logistics', 'Security', 'Photography'];
 
-export function buildSeed(opts: { date?: string } = {}): SeedData {
+export function buildSeed(opts: { date?: string; ownerId?: string } = {}): SeedData {
   const date = opts.date ?? '2026-10-03';
   const r = rng(20260930);
   const hex = (n: number) => Array.from({ length: n }, () => Math.floor(r() * 16).toString(16)).join('');
@@ -79,11 +79,17 @@ export function buildSeed(opts: { date?: string } = {}): SeedData {
   const eventId = uuid();
   const event: EventRow = {
     id: eventId,
+    owner_id: opts.ownerId ?? 'owner',
     name: 'TSEC Fest 2026',
     venue: 'TSEC Campus, Bandra West, Mumbai',
+    description: null,
     starts_at: at('09'),
     ends_at: at('21'),
     clock_offset_minutes: 0,
+    join_code: 'DEMO26',
+    template_id: 'college-fest',
+    cover_url: null,
+    created_at: new Date(0).toISOString(),
   };
 
   const zoneIds = ZONE_PLAN.map(() => uuid());
@@ -91,7 +97,7 @@ export function buildSeed(opts: { date?: string } = {}): SeedData {
 
   // staff
   const staff: Volunteer[] = STAFF.map((s, i) => ({
-    id: uuid(), event_id: eventId, name: s.name, email: `${s.name.toLowerCase().replace(/[^a-z]+/g, '.')}@crewpulse.demo`,
+    id: uuid(), event_id: eventId, user_id: null, avatar_url: null, name: s.name, email: `${s.name.toLowerCase().replace(/[^a-z]+/g, '.')}@crewpulse.demo`,
     phone: `+91 98${String(10000000 + i * 1234567).slice(0, 8)}`, role: s.role, skills: [...s.skills],
     availability: [win('09', '21')], preferred_zone_ids: [], max_hours: 12, reliability: 1, verified: true,
   }));
@@ -153,7 +159,7 @@ export function buildSeed(opts: { date?: string } = {}): SeedData {
 
     const first = name.split(' ')[0].toLowerCase();
     return {
-      id: uuid(), event_id: eventId, name,
+      id: uuid(), event_id: eventId, user_id: null, avatar_url: null, name,
       email: `${first}.${i + 1}@example.in`,
       phone: `+91 ${pick(['98', '97', '99', '90', '88'])}${String(Math.floor(r() * 1e8)).padStart(8, '0')}`,
       role: 'volunteer' as const, skills, availability: windows.map(([a, b]) => win(a, b)),

@@ -1,27 +1,33 @@
-import { handle, fail, loadSnapshot, ok } from '@/lib/api';
+import { COORD, handle, HttpError, loadSnapshot, ok, readJson } from '@/lib/api';
 import { insertAnnouncement, insertNotifications } from '@/lib/db/queries';
 import { isActiveStatus } from '@/lib/engine';
+import type { AnnouncementAudience } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-/** Broadcast to everyone, one zone, or one shift role; fans out one notification per recipient. */
+const AUDIENCES: AnnouncementAudience[] = ['all', 'volunteers', 'attendees', 'zone', 'role'];
+
+/**
+ * Broadcast to everyone, volunteers, attendees, one zone or one shift role.
+ * Volunteers get a notification each (live toast); attendees read the announcement in their feed.
+ */
 export async function POST(req: Request) {
-  const b = (await req.json()) as { audience?: 'all' | 'zone' | 'role'; zone_id?: string | null; role_name?: string | null; title?: string; body?: string; urgent?: boolean; created_by?: string | null };
-  if (!b.audience || !b.title?.trim() || !b.body?.trim()) return fail('audience, title and body are required');
-  if (b.audience === 'zone' && !b.zone_id) return fail('Pick a zone');
-  if (b.audience === 'role' && !b.role_name) return fail('Pick a role');
-  return handle(async (db) => {
-    const { snap } = await loadSnapshot(db);
+  const b = await readJson<{ eventId?: string; audience?: AnnouncementAudience; zone_id?: string | null; role_name?: string | null; title?: string; body?: string; urgent?: boolean }>(req);
+  return handle(req, { eventId: b.eventId, roles: COORD }, async ({ db, user }) => {
+    if (!b.audience || !AUDIENCES.includes(b.audience) || !b.title?.trim() || !b.body?.trim()) throw new HttpError(400, 'audience, title and body are required');
+    if (b.audience === 'zone' && !b.zone_id) throw new HttpError(400, 'Pick a zone');
+    if (b.audience === 'role' && !b.role_name) throw new HttpError(400, 'Pick a role');
+    const { snap } = await loadSnapshot(db, b.eventId!);
+    const me = snap.volunteers.find((v) => v.user_id === user.id);
     const shiftById = new Map(snap.shifts.map((s) => [s.id, s]));
 
-    let recipients: Set<string>;
-    if (b.audience === 'all') {
-      recipients = new Set(snap.volunteers.map((v) => v.id));
-    } else {
-      recipients = new Set();
+    const recipients = new Set<string>();
+    if (b.audience === 'all' || b.audience === 'volunteers') {
+      snap.volunteers.forEach((v) => recipients.add(v.id));
+    } else if (b.audience === 'zone' || b.audience === 'role') {
       for (const a of snap.assignments) {
         const s = shiftById.get(a.shift_id);
-        if (!s || !isActiveStatus(a.status) && a.status !== 'checked_in') continue;
+        if (!s || (!isActiveStatus(a.status) && a.status !== 'checked_in')) continue;
         if (b.audience === 'zone' ? s.zone_id === b.zone_id : s.role_name === b.role_name) recipients.add(a.volunteer_id);
       }
       if (b.audience === 'zone') {
@@ -29,15 +35,18 @@ export async function POST(req: Request) {
         if (coord) recipients.add(coord);
       }
     }
+    // the sender does not need an alert about their own message
+    if (me) recipients.delete(me.id);
 
     const ann = await insertAnnouncement({
-      event_id: snap.event.id, audience: b.audience!, zone_id: b.audience === 'zone' ? b.zone_id! : null,
-      role_name: b.audience === 'role' ? b.role_name! : null, title: b.title!.trim(), body: b.body!.trim(),
-      urgent: !!b.urgent, created_by: b.created_by ?? null,
+      event_id: b.eventId!, audience: b.audience, zone_id: b.audience === 'zone' ? b.zone_id! : null,
+      role_name: b.audience === 'role' ? b.role_name! : null, title: b.title.trim(), body: b.body.trim(),
+      urgent: !!b.urgent, created_by: me?.id ?? null,
     }, db);
-    await insertNotifications([...recipients].map((volunteer_id) => ({
+    await insertNotifications(b.eventId!, [...recipients].map((volunteer_id) => ({
       volunteer_id, kind: 'announcement' as const, title: (b.urgent ? 'URGENT: ' : '') + b.title!.trim(), body: b.body!.trim(),
     })), db);
-    return ok({ announcement: ann, recipients: recipients.size });
+    const attendees = b.audience === 'all' || b.audience === 'attendees' ? snap.attendees.length : 0;
+    return ok({ announcement: ann, recipients: recipients.size, attendees });
   });
 }

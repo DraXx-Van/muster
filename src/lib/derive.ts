@@ -1,5 +1,5 @@
 // Derived numbers for the UI. Every stat on screen comes from here (no hardcoded fake data).
-import type { Assignment, CoverageCell, CoverageStatus, Shift, Snapshot, Volunteer, Zone } from './types';
+import type { AnnouncementAudience, Assignment, CoverageCell, CoverageStatus, Shift, Snapshot, Volunteer, Zone } from './types';
 import { computeCoverage, fmtTime, isActiveStatus } from './engine';
 import { HOUR, ms } from './engine/time';
 
@@ -119,8 +119,11 @@ export const zoneName = (zones: Zone[], id: string | null | undefined) => zones.
 export const volunteerName = (vs: Volunteer[], id: string | null | undefined) => vs.find((v) => v.id === id)?.name ?? 'Unassigned';
 
 /** Who an announcement reaches (mirrors /api/announce): everyone, people assigned in a zone, or people on a shift role. */
-export function recipientCount(snap: Snapshot, audience: 'all' | 'zone' | 'role', zoneId: string, roleName: string): number {
-  if (audience === 'all') return snap.volunteers.length;
+export function recipientCount(snap: Snapshot, audience: AnnouncementAudience, zoneId: string, roleName: string, senderId?: string): number {
+  const staffAndVolunteers = snap.volunteers.filter((v) => v.id !== senderId).length;
+  if (audience === 'all') return staffAndVolunteers + snap.attendees.length;
+  if (audience === 'volunteers') return staffAndVolunteers;
+  if (audience === 'attendees') return snap.attendees.length;
   const shiftById = new Map(snap.shifts.map((s) => [s.id, s]));
   const ids = new Set<string>();
   for (const a of activeAssignments(snap)) {
@@ -131,6 +134,7 @@ export function recipientCount(snap: Snapshot, audience: 'all' | 'zone' | 'role'
     const coord = snap.zones.find((z) => z.id === zoneId)?.coordinator_id;
     if (coord) ids.add(coord);
   }
+  if (senderId) ids.delete(senderId);
   return ids.size;
 }
 

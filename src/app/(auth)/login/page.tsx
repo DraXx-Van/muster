@@ -1,123 +1,174 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import useSWR from 'swr';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, CalendarClock, Crown, Radio, Search, ShieldCheck, Smartphone } from 'lucide-react';
-import { getSnapshot } from '@/lib/db/queries';
-import { setSession } from '@/lib/session';
+import { ArrowLeft, ClipboardList, HandHeart, Loader2, QrCode } from 'lucide-react';
+import { toast } from 'sonner';
+import { HOME, useAuth } from '@/lib/auth';
+import type { AccountType } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ErrorState, PersonAvatar, SkillTags } from '@/components/common/kit';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FieldError } from '@/components/common/kit';
+import { Logo } from '@/components/common/visual';
+import { ProductMock } from '@/components/landing/ProductMock';
 
-export default function LoginPage() {
+const signInSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address'),
+  password: z.string().min(1, 'Enter your password'),
+});
+const signUpSchema = z.object({
+  accountType: z.enum(['coordinator', 'volunteer']),
+  fullName: z.string().trim().min(2, 'Enter your full name'),
+  email: z.string().trim().email('Enter a valid email address'),
+  phone: z.string().trim().refine((v) => v === '' || /^\+?[\d\s-]{10,15}$/.test(v), 'Enter a valid phone number'),
+  password: z.string().min(6, 'At least 6 characters'),
+});
+type SignIn = z.infer<typeof signInSchema>;
+type SignUp = z.infer<typeof signUpSchema>;
+
+const TYPES: { value: Exclude<AccountType, 'attendee'>; title: string; hint: string; icon: typeof ClipboardList }[] = [
+  { value: 'coordinator', title: 'Coordinator', hint: 'I organise events and manage a crew', icon: ClipboardList },
+  { value: 'volunteer', title: 'Volunteer', hint: 'I help out at events', icon: HandHeart },
+];
+
+function LoginForm() {
   const router = useRouter();
-  const { data, error, mutate } = useSWR('snapshot', () => getSnapshot());
-  const [q, setQ] = useState('');
+  const params = useSearchParams();
+  const { user, profile, loading, signIn, signUp } = useAuth();
+  const [tab, setTab] = useState<'in' | 'up'>(params.get('mode') === 'signup' ? 'up' : 'in');
+  const [busy, setBusy] = useState(false);
 
-  const staff = useMemo(() => data?.volunteers.filter((v) => v.role !== 'volunteer') ?? [], [data]);
-  const vols = useMemo(
-    () => (data?.volunteers ?? []).filter((v) => v.role === 'volunteer' && v.name.toLowerCase().includes(q.toLowerCase())),
-    [data, q],
-  );
-
-  const enter = (id: string, role: string, to?: string | null) => {
-    setSession(id);
-    router.push(to && to.startsWith('/') ? to : role === 'volunteer' ? '/me' : '/dashboard');
+  const nextPath = () => {
+    const n = params.get('next');
+    return n && n.startsWith('/') && !n.startsWith('//') ? n : null;
   };
 
-  // deep link for demos: /login?as=<person id>&to=/me opens that person's view directly (handy for a phone)
+  // already signed in -> go straight to your area
   useEffect(() => {
-    if (!data) return;
-    const p = new URLSearchParams(window.location.search);
-    const id = p.get('as');
-    const person = id ? data.volunteers.find((v) => v.id === id) : undefined;
-    if (person) enter(person.id, person.role, p.get('to'));
+    if (!loading && user && profile) router.replace(nextPath() ?? HOME[profile.account_type]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [loading, user, profile, router]);
+
+  const inForm = useForm<SignIn>({ resolver: zodResolver(signInSchema), defaultValues: { email: '', password: '' } });
+  const upForm = useForm<SignUp>({ resolver: zodResolver(signUpSchema), defaultValues: { accountType: params.get('next')?.startsWith('/v') ? 'volunteer' : 'coordinator', fullName: '', email: '', phone: '', password: '' } });
+
+  const doSignIn = async (v: SignIn) => {
+    setBusy(true);
+    try {
+      const p = await signIn(v.email, v.password);
+      router.replace(nextPath() ?? HOME[p.account_type]);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not sign in'); }
+    finally { setBusy(false); }
+  };
+
+  const doSignUp = async (v: SignUp) => {
+    setBusy(true);
+    try {
+      const p = await signUp({ email: v.email, password: v.password, fullName: v.fullName, phone: v.phone, accountType: v.accountType });
+      toast.success(`Welcome, ${p.full_name.split(' ')[0]}!`);
+      router.replace(nextPath() ?? HOME[p.account_type]);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not create the account'); }
+    finally { setBusy(false); }
+  };
 
   return (
-    <div className="relative grid min-h-screen lg:grid-cols-2">
-      {/* left: pitch */}
-      <div className="grid-dots relative hidden flex-col justify-between overflow-hidden border-r p-10 lg:flex">
-        <div className="pointer-events-none absolute -left-32 -top-32 size-112 rounded-full bg-primary/20 blur-3xl" />
-        <div className="relative flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_24px_-4px_var(--primary)]"><CalendarClock className="size-5" /></span>
-          <span className="text-lg font-semibold tracking-tight">CrewPulse</span>
+    <div className="grid min-h-screen lg:grid-cols-[1fr_1.05fr]">
+      {/* form side */}
+      <div className="flex flex-col px-5 py-6 sm:px-10">
+        <div className="flex items-center justify-between">
+          <Logo />
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Back to home</Link>
         </div>
-        <div className="relative max-w-md">
-          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight">The right volunteer, in the right place, <span className="text-primary">even when plans fall apart.</span></h1>
-          <p className="mt-4 text-muted-foreground">Skill-based shift assignment that re-optimizes in milliseconds when people drop out, with live visibility of every zone.</p>
-          <ul className="mt-8 space-y-3 text-sm">
-            {[
-              [ShieldCheck, 'No double bookings, no missing skills, fair hours'],
-              [Radio, 'Live coverage, check-ins, issues and escalations'],
-              [Smartphone, 'A phone view for volunteers: shifts, check-in, alerts'],
-            ].map(([Icon, text], i) => {
-              const I = Icon as typeof ShieldCheck;
-              return <li key={i} className="flex items-center gap-3"><span className="flex size-8 items-center justify-center rounded-lg bg-muted text-primary"><I className="size-4" /></span>{text as string}</li>;
-            })}
-          </ul>
-        </div>
-        <p className="relative text-xs text-muted-foreground">Demo login: pick a persona. Production would use real authentication.</p>
-      </div>
 
-      {/* right: persona picker */}
-      <div className="flex items-center justify-center p-5 sm:p-10">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="w-full max-w-md">
-          <div className="mb-6 lg:hidden flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"><CalendarClock className="size-5" /></span>
-            <span className="text-lg font-semibold tracking-tight">CrewPulse</span>
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight">Who are you today?</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{data ? data.event.name : 'Loading the event...'}</p>
+        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            <h1 className="text-[28px] font-semibold tracking-tight">{tab === 'in' ? 'Welcome back' : 'Create your account'}</h1>
+            <p className="mt-1.5 text-[15px] text-muted-foreground">{tab === 'in' ? 'Sign in to manage your events or your shifts.' : 'Free to start. Pick the account that fits you.'}</p>
 
-          {error && !data && <ErrorState className="mt-6" message={error.message} onRetry={() => void mutate()} />}
-          {!data && !error && <div className="mt-6 space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div>}
+            <Tabs value={tab} onValueChange={(v) => setTab(v as 'in' | 'up')} className="mt-6">
+              <TabsList className="w-full"><TabsTrigger value="in" className="flex-1">Sign in</TabsTrigger><TabsTrigger value="up" className="flex-1">Create account</TabsTrigger></TabsList>
+            </Tabs>
 
-          {data && (
-            <div className="mt-6 space-y-6">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Organizers and coordinators</p>
-                <div className="space-y-2">
-                  {staff.map((p) => (
-                    <button key={p.id} onClick={() => enter(p.id, p.role)}
-                      className="group flex w-full items-center gap-3 rounded-xl border bg-card/60 p-3 text-left transition-colors hover:border-primary/50 hover:bg-card">
-                      <PersonAvatar name={p.name} size="lg" />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5 text-sm font-medium">{p.name}{p.role === 'organizer' && <Crown className="size-3.5 text-partial" />}</span>
-                        <span className="text-xs capitalize text-muted-foreground">{p.role}</span>
-                      </span>
-                      <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                    </button>
-                  ))}
+            {tab === 'in' ? (
+              <form onSubmit={inForm.handleSubmit(doSignIn)} className="mt-6 space-y-4" noValidate>
+                <div>
+                  <Label htmlFor="si-email">Email</Label>
+                  <Input id="si-email" type="email" autoComplete="email" className="h-11" aria-invalid={!!inForm.formState.errors.email} {...inForm.register('email')} />
+                  <FieldError message={inForm.formState.errors.email?.message} />
                 </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Volunteers (phone view)</p>
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Search volunteers" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
+                <div>
+                  <Label htmlFor="si-pass">Password</Label>
+                  <Input id="si-pass" type="password" autoComplete="current-password" className="h-11" aria-invalid={!!inForm.formState.errors.password} {...inForm.register('password')} />
+                  <FieldError message={inForm.formState.errors.password?.message} />
                 </div>
-                <ScrollArea className="h-56 rounded-xl border">
-                  <div className="p-1">
-                    {vols.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">No volunteer matches &ldquo;{q}&rdquo;</p>}
-                    {vols.map((v) => (
-                      <button key={v.id} onClick={() => enter(v.id, v.role)} className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-muted/60">
-                        <PersonAvatar name={v.name} size="sm" />
-                        <span className="min-w-0 flex-1 truncate text-sm">{v.name}</span>
-                        <SkillTags skills={v.skills} limit={2} />
+                <Button type="submit" size="lg" className="h-11 w-full text-[15px]" disabled={busy}>{busy && <Loader2 className="animate-spin" />} Sign in</Button>
+              </form>
+            ) : (
+              <form onSubmit={upForm.handleSubmit(doSignUp)} className="mt-6 space-y-4" noValidate>
+                <Controller control={upForm.control} name="accountType" render={({ field }) => (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {TYPES.map((t) => (
+                      <button type="button" key={t.value} aria-pressed={field.value === t.value} onClick={() => field.onChange(t.value)}
+                        className={cn('flex flex-col items-start gap-2 rounded-2xl border bg-card p-3.5 text-left transition-all', field.value === t.value ? 'border-primary ring-2 ring-primary/20' : 'hover:bg-muted/50')}>
+                        <span className={cn('flex size-8 items-center justify-center rounded-lg', field.value === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}><t.icon className="size-4" /></span>
+                        <span><span className="block text-sm font-semibold">{t.title}</span><span className="text-xs leading-snug text-muted-foreground">{t.hint}</span></span>
                       </button>
                     ))}
                   </div>
-                </ScrollArea>
-              </div>
+                )} />
+                <div>
+                  <Label htmlFor="su-name">Full name</Label>
+                  <Input id="su-name" autoComplete="name" className="h-11" aria-invalid={!!upForm.formState.errors.fullName} {...upForm.register('fullName')} />
+                  <FieldError message={upForm.formState.errors.fullName?.message} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="su-email">Email</Label>
+                    <Input id="su-email" type="email" autoComplete="email" className="h-11" aria-invalid={!!upForm.formState.errors.email} {...upForm.register('email')} />
+                    <FieldError message={upForm.formState.errors.email?.message} />
+                  </div>
+                  <div>
+                    <Label htmlFor="su-phone">Phone (optional)</Label>
+                    <Input id="su-phone" inputMode="tel" autoComplete="tel" className="h-11" aria-invalid={!!upForm.formState.errors.phone} {...upForm.register('phone')} />
+                    <FieldError message={upForm.formState.errors.phone?.message} />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="su-pass">Password</Label>
+                  <Input id="su-pass" type="password" autoComplete="new-password" className="h-11" aria-invalid={!!upForm.formState.errors.password} {...upForm.register('password')} />
+                  <FieldError message={upForm.formState.errors.password?.message} />
+                </div>
+                <Button type="submit" size="lg" className="h-11 w-full text-[15px]" disabled={busy}>{busy && <Loader2 className="animate-spin" />} Create account</Button>
+              </form>
+            )}
+
+            <div className="mt-6 flex items-start gap-3 rounded-2xl bg-accent p-3.5 text-[13px] leading-snug text-accent-foreground">
+              <QrCode className="mt-0.5 size-4 shrink-0 text-primary" />
+              <p><span className="font-semibold">Attending an event?</span> You do not need an account. Scan the event&apos;s QR code and pick a name.</p>
             </div>
-          )}
-        </motion.div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* art side */}
+      <div className="relative hidden overflow-hidden border-l bg-linear-to-br from-indigo-50 via-sky-50 to-white p-12 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-900 lg:flex lg:flex-col lg:justify-center">
+        <div className="grid-dots absolute inset-0 opacity-60" />
+        <div className="relative mx-auto w-full max-w-[560px]">
+          <h2 className="mb-8 max-w-md text-3xl font-semibold leading-tight tracking-tight text-balance">The right volunteer in the right place, even when plans change.</h2>
+          <ProductMock />
+        </div>
       </div>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return <Suspense><LoginForm /></Suspense>;
 }

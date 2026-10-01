@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { Assignment, ReplacementSuggestion, Shift, Snapshot } from '@/lib/types';
 import { fmtRange } from '@/lib/engine';
 import { post } from '@/lib/post';
+import { useData } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PersonAvatar, SkillTags } from '@/components/common/kit';
@@ -28,6 +29,7 @@ export function DropoutDialog(props: Props) {
 }
 
 function DropoutBody({ target, snap, onClose, onChanged }: Omit<Props, 'target'> & { target: DropTarget }) {
+  const { eventId } = useData();
   const [step, setStep] = useState<'confirm' | 'loading' | 'results'>(target.kind === 'seat' ? 'loading' : 'confirm');
   const [result, setResult] = useState<RebalanceResult | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -40,7 +42,7 @@ function DropoutBody({ target, snap, onClose, onChanged }: Omit<Props, 'target'>
   const run = (body: Body) => { setStep('loading'); return load(body); };
   const load = async (body: Body) => {
     try {
-      const r = await post<RebalanceResult>('/api/rebalance', body);
+      const r = await post<RebalanceResult>('/api/rebalance', { eventId, ...body });
       setResult(r);
       setStep('results');
       onChanged(r.computeMs);
@@ -60,7 +62,7 @@ function DropoutBody({ target, snap, onClose, onChanged }: Omit<Props, 'target'>
     if (!shift) return;
     setAssigning(s.volunteer_id);
     try {
-      await post('/api/assign/apply', { assignments: [{ shift_id: shift.id, volunteer_id: s.volunteer_id, score: s.score, reason: s.reason }] });
+      await post('/api/assign/apply', { eventId, assignments: [{ shift_id: shift.id, volunteer_id: s.volunteer_id, score: s.score, reason: s.reason }] });
       const name = snap.volunteers.find((v) => v.id === s.volunteer_id)?.name;
       toast.success(`${name} assigned to ${zone?.name}`, { description: `Re-optimized in ${result?.computeMs ?? 0} ms` });
       onChanged();
@@ -79,7 +81,7 @@ function DropoutBody({ target, snap, onClose, onChanged }: Omit<Props, 'target'>
         {step === 'confirm' && target?.kind === 'assignment' && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <PersonAvatar name={dropper?.name ?? '?'} size="lg" />
+              <PersonAvatar name={dropper?.name ?? '?'} src={dropper?.avatar_url} size="lg" />
               <div><p className="font-medium">{dropper?.name}</p><SkillTags skills={dropper?.skills ?? []} /></div>
             </div>
             <p className="text-sm text-muted-foreground">The seat opens up and the engine ranks the best replacements instantly.</p>
@@ -114,7 +116,7 @@ function DropoutBody({ target, snap, onClose, onChanged }: Omit<Props, 'target'>
                     return (
                       <motion.li key={s.volunteer_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: i * 0.04 }} className="rounded-lg border p-2.5">
                         <div className="flex items-center gap-3">
-                          <PersonAvatar name={v?.name ?? '?'} />
+                          <PersonAvatar name={v?.name ?? '?'} src={v?.avatar_url} />
                           <div className="min-w-0 flex-1">
                             <p className="flex items-center gap-2 text-sm font-medium">{v?.name}{i === 0 && <span className="rounded bg-primary/15 px-1.5 text-[10px] font-semibold uppercase text-primary">Best match</span>}</p>
                             <SkillTags skills={v?.skills ?? []} highlight={shift?.required_skills} />

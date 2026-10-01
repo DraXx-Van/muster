@@ -44,7 +44,7 @@ export function ZoneSheet({ summary, snap, onClose }: { summary: ZoneSummary | n
                     const v = snap.volunteers.find((x) => x.id === a.volunteer_id);
                     return (
                       <li key={a.id} className="flex items-center gap-3 rounded-lg border p-2">
-                        <PersonAvatar name={v?.name ?? '?'} />
+                        <PersonAvatar name={v?.name ?? '?'} src={v?.avatar_url} />
                         <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{v?.name}</p><SkillTags skills={v?.skills ?? []} limit={2} highlight={shift?.required_skills} /></div>
                         <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium capitalize', ASSIGNMENT_TONE[a.status])}>{a.status.replace('_', ' ')}</span>
                       </li>

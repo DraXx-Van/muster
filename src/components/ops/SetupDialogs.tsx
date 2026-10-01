@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { SKILLS, type Shift, type Snapshot, type Zone } from '@/lib/types';
 import { createShifts, createZone, updateShift, updateZone } from '@/lib/db/queries';
 import { fmtTime } from '@/lib/engine';
+import { autoLayout } from '@/lib/templates';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,7 +38,7 @@ export function ZoneDialog({ open, onClose, snap, zone, onSaved }: { open: boole
     resolver: zodResolver(zoneSchema),
     defaultValues: zone
       ? { name: zone.name, color: zone.color, map_x: zone.map_x, map_y: zone.map_y, map_w: zone.map_w, map_h: zone.map_h, coordinator_id: zone.coordinator_id ?? NONE }
-      : { name: '', color: COLORS[0], map_x: 20, map_y: 20, map_w: 170, map_h: 110, coordinator_id: NONE },
+      : { name: '', color: COLORS[snap.zones.length % COLORS.length], ...autoLayout(snap.zones.length + 1)[snap.zones.length], coordinator_id: NONE },
   });
 
   const submit = async (v: ZoneValues) => {
